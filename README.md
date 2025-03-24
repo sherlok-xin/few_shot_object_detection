@@ -1,96 +1,122 @@
 # few_shot_object_detection
-# Small Sample Object Detection
 
-This project demonstrates an approach to improve YOLOv8 performance on small sample object detection tasks by augmenting the dataset using diffusion models and adversarial samples.
+## Small Sample Object Detection
+
+利用YOLOv8进行小样本目标检测（few_shot_object_detection），并利用扩散模型（diffusion）以及对抗样本生成技术扩充数据集以提高算法性能
 
 ## Project Structure
-small_sample_object_detection/ 
 
-├── data/ 
-│ ├── train/ 
-│ │ ├── images/ 
-│ │ └── labels/ 
-│ ├── val/ 
-│ │ ├── images/ 
-│ │ └── labels/ 
-│ ├── test/ 
-│ │ ├── images/ 
-│ │ └── labels/ 
-│ └── augmented/ 
-│ ├── images/ 
-│ └── labels/ 
-├── scripts/ 
-│ ├── prepare_coco_subset.py 
-│ ├── train_and_evaluate_yolov8.py 
-│ ├── generate_diffusion_samples.py 
-│ ├── generate_adversarial_samples.py 
-| ├── generate_weighted_samples.py
-│ ├── train_and_evaluate_augmented_yolov8.py 
-│ ├── data.yaml 
-│ └── data_augmented.yaml 
-├── requirements.txt 
+```
+small_sample_object_detection/
+├── data/
+│   ├── train/
+│   │   ├── images/
+│   │   └── labels/
+│   ├── val/
+│   │   ├── images/
+│   │   └── labels/
+│   ├── test/
+│   │   ├── images/
+│   │   └── labels/
+│   └── augmented/
+│       ├── images/
+│       └── labels/
+├── scripts/
+│   ├── prepare_coco_subset.py
+│   ├── train_and_evaluate_yolov8.py
+│   ├── generate_diffusion_samples.py
+│   ├── generate_fgsm_samples.py
+│   ├── generate_weighted_samples.py
+│   ├── train_and_evaluate_augmented_yolov8.py
+│   ├── data.yaml
+│   └── data_augmented.yaml
+├── requirements.txt
 └── README.md
+```
 
-导入项目
+## Setup
+
+### Clone the repository
+
+```bash
 git clone https://github.com/sherlok-xin/small_sample_object_detection.git
-
 cd small_sample_object_detection
+```
 
-安装要求
+### Install requirements
+
+```bash
 pip install -r requirements.txt
+```
 
-准备数据集（可换成其他数据集）
+### Prepare the dataset (replace with your own if needed)
+
+```bash
 mkdir -p ~/datasets/coco_subset
-
 cd ~/datasets/coco_subset
-
 wget http://images.cocodataset.org/zips/val2017.zip
-
 wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip
-
 unzip val2017.zip
-
 unzip annotations_trainval2017.zip
+```
 
+## Experiment Steps
 
-step1:数据集预处理：
+### Step 1: Data Preprocessing
+
+```bash
 python scripts/prepare_coco_subset.py
+```
 
-step2:开始训练评估
+### Step 2: Train and Evaluate YOLOv8
+
+```bash
 python scripts/train_and_evaluate_yolov8.py
+```
 
-插入：可视化训练结果：
-1.使用Tensorboard查看训练过程
-tensorboard --logdir runs/detect/yolov8_small_sample2/
-2.查看保存的模型权重：
-训练过程中保存的模型权重文件位于 runs/detect/yolov8_small_sample2/weights/ 目录下
-last.pt为最后一次训练的模型权重，best.pt为最佳评估的模型权重
-3.查看评估结果：评估结果对象包含了各种评估指标和混淆矩阵，您通过 Python 脚本来加载和查看这些结果。
-from ultralytics.utils.metrics import DetMetrics
+### Step 3: Visualize Training Results
+
+1. **Use TensorBoard to view the training process**
+
+```bash
+tensorboard --logdir runs/detect/yolov8_small_sample/
+```
+
+2. **View saved model weights**
+
+Model weights saved during training are located in the `runs/detect/yolov8_small_sample/weights/` directory. `last.pt` is the final model weight, and `best.pt` is the best evaluated model weight.
+
+3. **View evaluation results**
+
+```python
+from ultralytics.yolov8.utils.metrics import DetMetrics
 import pickle
 
-%加载评估结果对象
-results_path = 'runs/detect/yolov8_small_sample2/results.csv'
+# Load evaluation results
+results_path = 'runs/detect/yolov8_small_sample/results.pkl'
 with open(results_path, 'rb') as f:
     results = pickle.load(f)
 
-%打印AP类别索引
+# Print AP class index
 print("AP Class Index:", results.ap_class_index)
 
-%打印混淆矩阵
+# Print confusion matrix
 print("Confusion Matrix:")
 print(results.confusion_matrix)
 
-%打印评估曲线
+# Print evaluation curves
 print("Evaluation Curves:", results.curves)
 
-%查看边界框相关的评估指标
+# View box metrics
 print("Box Metrics:", results.box)
+```
 
-4.绘制precision_recall曲线：
+4. **Plot Precision-Recall curve**
+
+```python
 import matplotlib.pyplot as plt
 
-%绘制 Precision-Recall 曲线
+# Plot Precision-Recall curve
 for curve in results.curves:
     if 'Precision-Recall' in curve:
         plt.plot(results.curves[curve]['x'], results.curves[curve]['y'], label=curve)
@@ -100,17 +126,28 @@ plt.ylabel('Precision')
 plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
+```
 
+### Step 4: Generate Diffusion Samples
 
-
-step3:扩散生成样本
+```bash
 python scripts/generate_diffusion_samples.py
+```
 
-step4:对抗生成样本
-python scripts/generate_adversarial_samples.py
+### Step 5: Generate Adversarial Samples with FGSM
 
-step5:权重检测
+```bash
+python scripts/generate_fgsm_samples.py
+```
+
+### Step 6: Generate Weighted Samples
+
+```bash
 python scripts/generate_weighted_samples.py
+```
 
-step5:使用增强数据进行训练和评估
+### Step 7: Train and Evaluate with Augmented Data
+
+```bash
 python scripts/train_and_evaluate_augmented_yolov8.py
+```
