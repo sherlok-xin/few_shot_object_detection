@@ -5,6 +5,7 @@ This project demonstrates an approach to improve YOLOv8 performance on small sam
 
 ## Project Structure
 small_sample_object_detection/ 
+
 ├── data/ 
 │ ├── train/ 
 │ │ ├── images/ 
@@ -23,6 +24,7 @@ small_sample_object_detection/
 │ ├── train_and_evaluate_yolov8.py 
 │ ├── generate_diffusion_samples.py 
 │ ├── generate_adversarial_samples.py 
+| ├── generate_weighted_samples.py
 │ ├── train_and_evaluate_augmented_yolov8.py 
 │ ├── data.yaml 
 │ └── data_augmented.yaml 
@@ -30,7 +32,8 @@ small_sample_object_detection/
 └── README.md
 
 导入项目
-git clone https://github.com/your-username/small_sample_object_detection.git
+git clone https://github.com/sherlok-xin/small_sample_object_detection.git
+
 cd small_sample_object_detection
 
 安装要求
@@ -38,11 +41,17 @@ pip install -r requirements.txt
 
 准备数据集（可换成其他数据集）
 mkdir -p ~/datasets/coco_subset
+
 cd ~/datasets/coco_subset
+
 wget http://images.cocodataset.org/zips/val2017.zip
+
 wget http://images.cocodataset.org/annotations/annotations_trainval2017.zip
+
 unzip val2017.zip
+
 unzip annotations_trainval2017.zip
+
 
 step1:数据集预处理：
 python scripts/prepare_coco_subset.py
@@ -61,7 +70,7 @@ from ultralytics.utils.metrics import DetMetrics
 import pickle
 
 %加载评估结果对象
-results_path = 'runs/detect/yolov8_small_sample2/results.pkl'
+results_path = 'runs/detect/yolov8_small_sample2/results.csv'
 with open(results_path, 'rb') as f:
     results = pickle.load(f)
 
@@ -99,6 +108,9 @@ python scripts/generate_diffusion_samples.py
 
 step4:对抗生成样本
 python scripts/generate_adversarial_samples.py
+
+step5:权重检测
+python scripts/generate_weighted_samples.py
 
 step5:使用增强数据进行训练和评估
 python scripts/train_and_evaluate_augmented_yolov8.py
