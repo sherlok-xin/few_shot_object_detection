@@ -91,3 +91,14 @@ plt.ylabel('Precision')
 plt.title('Precision-Recall Curve')
 plt.legend()
 plt.show()
+
+
+
+step3:扩散生成样本
+python scripts/generate_diffusion_samples.py
+
+step4:对抗生成样本
+python scripts/generate_adversarial_samples.py
+
+step5:使用增强数据进行训练和评估
+python scripts/train_and_evaluate_augmented_yolov8.py
