@@ -60,28 +60,28 @@ last.pt为最后一次训练的模型权重，best.pt为最佳评估的模型权
 from ultralytics.utils.metrics import DetMetrics
 import pickle
 
-# 加载评估结果对象
+%加载评估结果对象
 results_path = 'runs/detect/yolov8_small_sample2/results.pkl'
 with open(results_path, 'rb') as f:
     results = pickle.load(f)
 
-# 打印AP类别索引
+%打印AP类别索引
 print("AP Class Index:", results.ap_class_index)
 
-# 打印混淆矩阵
+%打印混淆矩阵
 print("Confusion Matrix:")
 print(results.confusion_matrix)
 
-# 打印评估曲线
+%打印评估曲线
 print("Evaluation Curves:", results.curves)
 
-# 查看边界框相关的评估指标
+%查看边界框相关的评估指标
 print("Box Metrics:", results.box)
 
 4.绘制precision_recall曲线：
 import matplotlib.pyplot as plt
 
-# 绘制 Precision-Recall 曲线
+%绘制 Precision-Recall 曲线
 for curve in results.curves:
     if 'Precision-Recall' in curve:
         plt.plot(results.curves[curve]['x'], results.curves[curve]['y'], label=curve)
