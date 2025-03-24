@@ -1,49 +1,32 @@
-import torch
-import torchvision.transforms as T
-from PIL import Image
 import os
-from ultralytics import YOLO
+from gan_model import GANPipeline  # 假设您有一个 GAN 模型的管道
+import torch
 
-# 加载已经训练好的YOLOv8模型
-model = YOLO('yolov8s.pt')
-model.load('runs/detect/yolov8_small_sample/weights/best.pt')
+# 检查并设置 CUDA 设备
+if not torch.cuda.is_available():
+    raise RuntimeError("CUDA is not available. Please check that you have installed the NVIDIA driver and CUDA.")
 
-# 对抗样本生成函数
-def generate_adversarial_sample(image_path, epsilon):
-    image = Image.open(image_path).convert('RGB')
-    transform = T.Compose([T.ToTensor()])
-    image_tensor = transform(image).unsqueeze(0)
+# 加载模型和管道
+gan_model_id = "path_to_your_gan_model"
+gan_pipeline = GANPipeline.from_pretrained(gan_model_id)
 
-    # 确保模型在评估模式
-    model.model.eval()
+# 将模型移动到 CUDA 设备
+gan_pipeline.to("cuda")
 
-    # 需要梯度计算
-    image_tensor.requires_grad = True
+# 生成样本
+num_samples = 10
+samples = gan_pipeline(num_samples).images
 
-    # 前向传播
-    outputs = model(image_tensor)
-
-    # 计算损失
-    loss = -outputs[0, 0, 4]  # 假设目标是第一个检测框的置信度
-
-    # 反向传播
-    model.model.zero_grad()
-    loss.backward()
-
-    # 生成对抗样本
-    adversarial_image = image_tensor + epsilon * image_tensor.grad.sign()
-    adversarial_image = torch.clamp(adversarial_image, 0, 1)
-
-    return T.ToPILImage()(adversarial_image.squeeze())
-
-# 输入图像路径和对抗强度
-input_image_path = 'path/to/your/image.jpg'
-epsilon = 0.01
-
-# 输出目录
-output_dir = "/content/small_sample_object_detection/data/augmented/images"
+# 保存样本
+output_dir = "/content/drive/MyDrive/Colab Notebooks/few_shot_object_detection/samples_gan"
 os.makedirs(output_dir, exist_ok=True)
+for i, sample in enumerate(samples):
+    sample.save(os.path.join(output_dir, f"sample_{i}.png"))
 
-# 生成并保存对抗样本
-adversarial_image = generate_adversarial_sample(input_image_path, epsilon)
-adversarial_image.save(os.path.join(output_dir, 'adversarial_image.jpg'))
+# 进行检测评估
+# 假设检测评估函数为 evaluate_detection(samples)
+def evaluate_detection(samples):
+    # 这里填写您的检测评估逻辑
+    pass
+
+evaluate_detection(samples)
