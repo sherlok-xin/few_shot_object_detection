@@ -28,6 +28,7 @@ small_sample_object_detection/
 │   ├── generate_fgsm_samples.py
 │   ├── generate_weighted_samples.py
 │   ├── train_and_evaluate_augmented_yolov8.py
+│   ├── evaluate.py
 │   ├── data.yaml
 │   └── data_augmented.yaml
 ├── requirements.txt
