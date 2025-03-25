@@ -3,6 +3,13 @@ from diffusers import DDPMPipeline
 from gan_model import GANPipeline  # 假设您有一个 GAN 模型的管道
 import torch
 from PIL import Image
+from torchvision import datasets, transforms
+from torch.utils.data import DataLoader
+from evaluate import evaluate_detection  
+
+def evaluate_detection(samples):
+    # 这里填写您的检测评估逻辑
+    pass
 
 # 检查并设置 CUDA 设备
 if not torch.cuda.is_available():
@@ -44,15 +51,22 @@ for i in range(num_samples):
     weighted_samples.append(weighted_img)
 
 # 保存加权样本
-output_dir = "/content/drive/MyDrive/Colab Notebooks/few_shot_object_detection/samples_weighted"
+output_dir = "data/augmented/images"
 os.makedirs(output_dir, exist_ok=True)
 for i, sample in enumerate(weighted_samples):
-    sample.save(os.path.join(output_dir, f"sample_{i}.png"))
+    sample.save(os.path.join(output_dir, f"weighted_sample_{i}.png"))
+
+# 准备数据加载器
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+])
+dataset = datasets.ImageFolder(root='data/augmented/images', transform=transform)
+dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
+
+# 加载检测模型
+detection_model = torch.load('path_to_trained_model')  # 请替换为实际模型路径
 
 # 进行检测评估
-# 假设检测评估函数为 evaluate_detection(weighted_samples)
-def evaluate_detection(samples):
-    # 这里填写您的检测评估逻辑
-    pass
-
-evaluate_detection(weighted_samples)
+results = evaluate_detection(detection_model, dataloader)
+print(results)
