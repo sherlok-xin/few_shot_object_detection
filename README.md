@@ -1,9 +1,33 @@
-# few_shot_object_detection
+# Few-Shot Object Detection Data Augmentation Experiment
 
-## Small Sample Object Detection
+## 实验目标
 
-利用YOLOv8进行小样本目标检测（few_shot_object_detection），并利用扩散模型（diffusion）以及对抗样本生成技术扩充数据集以提高算法性能
+探究扩散模型和对抗样本生成技术（FGSM）在 few-shot object detection 中的数据增强效果，并找到最佳的增强策略以提升模型性能和鲁棒性。
 
+## 实验流程
+
+### 数据准备
+
+1. 使用 `prepare_coco_subset.py` 文件准备 COCO 数据集，划分训练集、验证集和测试集。
+2. 使用 `generate_diffusion_samples.py` 文件生成基于扩散模型的增强数据集。
+3. 使用 `generate_fgsm_samples.py` 文件生成基于 FGSM 的对抗样本数据集。
+
+### 实验分组
+
+1. **对照组**：仅使用原始 COCO 数据集进行训练和评估，作为基线。
+2. **扩散模型增强组**：使用原始数据集 + 扩散模型生成的数据集进行训练和评估。
+3. **FGSM 增强组**：使用原始数据集 + FGSM 生成的对抗样本数据集进行训练和评估。
+4. **混合增强组**：使用原始数据集 + 扩散模型生成的数据集 + FGSM 生成的对抗样本数据集进行训练和评估，并尝试不同的混合比例（例如 1:1、1:2、2:1 等，要求能够自行调节两种生成数据集的权重）。
+
+### 模型训练和评估
+
+使用 `train_and_evaluate_yolov8.py` 文件对每组实验进行训练和评估，记录 mAP、Precision、Recall 等指标。
+
+### 结果分析
+
+1. 对比各组实验结果，分析不同数据增强方法对模型性能的影响。
+2. 比较不同混合比例下混合增强组的性能，寻找最佳的增强策略。
+3. 分析数据增强方法对模型鲁棒性和泛化能力的影响。
 ## Project Structure
 
 ```
@@ -26,8 +50,8 @@ small_sample_object_detection/
 │   ├── train_and_evaluate_yolov8.py
 │   ├── generate_diffusion_samples.py
 │   ├── generate_fgsm_samples.py
-│   ├── generate_weighted_samples.py
-│   ├── train_and_evaluate_augmented_yolov8.py
+│   ├── compare_results.py
+│   ├── train_and_evaluate_with_mixed_data.py
 │   ├── evaluate.py
 │   ├── data.yaml
 │   └── data_augmented.yaml
@@ -40,8 +64,8 @@ small_sample_object_detection/
 ### Clone the repository
 
 ```bash
-git clone https://github.com/sherlok-xin/small_sample_object_detection.git
-cd small_sample_object_detection
+git clone https://github.com/sherlok-xin/few_shot_object_detection.git
+cd few_shot_object_detection
 ```
 
 ### Install requirements
@@ -69,86 +93,32 @@ unzip annotations_trainval2017.zip
 python scripts/prepare_coco_subset.py
 ```
 
-### Step 2: Train and Evaluate YOLOv8
+### Step 2: Train and Evaluate YOLOv8(对照组)
 
 ```bash
 python scripts/train_and_evaluate_yolov8.py
 ```
 
-### Step 3: Visualize Training Results
-
-1. **Use TensorBoard to view the training process**
-
-```bash
-tensorboard --logdir runs/detect/yolov8_small_sample/
-```
-
-2. **View saved model weights**
-
-Model weights saved during training are located in the `runs/detect/yolov8_small_sample/weights/` directory. `last.pt` is the final model weight, and `best.pt` is the best evaluated model weight.
-
-3. **View evaluation results**
-
-```python
-from ultralytics.yolov8.utils.metrics import DetMetrics
-import pickle
-
-# Load evaluation results
-results_path = 'runs/detect/yolov8_small_sample/results.pkl'
-with open(results_path, 'rb') as f:
-    results = pickle.load(f)
-
-# Print AP class index
-print("AP Class Index:", results.ap_class_index)
-
-# Print confusion matrix
-print("Confusion Matrix:")
-print(results.confusion_matrix)
-
-# Print evaluation curves
-print("Evaluation Curves:", results.curves)
-
-# View box metrics
-print("Box Metrics:", results.box)
-```
-
-4. **Plot Precision-Recall curve**
-
-```python
-import matplotlib.pyplot as plt
-
-# Plot Precision-Recall curve
-for curve in results.curves:
-    if 'Precision-Recall' in curve:
-        plt.plot(results.curves[curve]['x'], results.curves[curve]['y'], label=curve)
-        
-plt.xlabel('Recall')
-plt.ylabel('Precision')
-plt.title('Precision-Recall Curve')
-plt.legend()
-plt.show()
-```
-
-### Step 4: Generate Diffusion Samples
+### Step 3: Generate Diffusion Samples
 
 ```bash
 python scripts/generate_diffusion_samples.py
 ```
 
-### Step 5: Generate Adversarial Samples with FGSM
+### Step 4: Generate Adversarial Samples with FGSM
 
 ```bash
 python scripts/generate_fgsm_samples.py
 ```
 
-### Step 6: Generate Weighted Samples
+### Step 5: Generate Weighted Samples
 
 ```bash
-python scripts/generate_weighted_samples.py
+python scripts/train_and_evaluate_with_mixed_data.py
 ```
 
-### Step 7: Train and Evaluate with Augmented Data
+### Step 7: Train and Evaluate with Data
 
 ```bash
-python scripts/train_and_evaluate_augmented_yolov8.py
+python scripts/train_and_evaluate_yolov8.py
 ```
