@@ -44,7 +44,7 @@ small_sample_object_detection/
 │   │   └── labels/
 │   └── augmented/
 │       ├── images/
-│       └── labels/
+│       
 ├── scripts/
 │   ├── prepare_coco_subset.py
 │   ├── train_and_evaluate_yolov8.py
