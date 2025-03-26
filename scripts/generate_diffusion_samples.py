@@ -1,42 +1,52 @@
-import os
-from diffusers import DDPMPipeline
 import torch
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
-from evaluate import evaluate_detection  
+from diffusers import StableDiffusionPipeline
+import os
+from PIL import Image
+import yaml
+import shutil
+from tqdm import tqdm
 
-# 检查并设置 CUDA 设备
-if not torch.cuda.is_available():
-    raise RuntimeError("CUDA is not available. Please check that you have installed the NVIDIA driver and CUDA.")
+def setup_directories(base_path):
+    """设置必要的目录结构"""
+    dirs = ['images', 'labels']
+    for dir_name in dirs:
+        os.makedirs(os.path.join(base_path, dir_name), exist_ok=True)
+    return base_path
 
-# 加载模型和管道
-model_id = "google/ddpm-cifar10-32"
-pipeline = DDPMPipeline.from_pretrained(model_id)
+def generate_diffusion_samples(config_path, num_samples=100):
+    """使用扩散模型生成数据样本"""
+    # 加载配置
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # 设置输出路径
+    output_base = os.path.join(os.path.dirname(config['train']), 'augmented_diffusion')
+    setup_directories(output_base)
+    
+    # 初始化扩散模型
+    model_id = "CompVis/stable-diffusion-v1-4"
+    pipe = StableDiffusionPipeline.from_pretrained(model_id, torch_dtype=torch.float16)
+    pipe = pipe.to("cuda")
+    
+    # 获取类别信息
+    classes = config.get('names', [])
+    
+    for class_name in tqdm(classes, desc="Generating samples for classes"):
+        prompt = f"A clear photo of a {class_name}, high quality, detailed"
+        
+        for i in range(num_samples):
+            # 生成图像
+            image = pipe(prompt).images[0]
+            
+            # 保存图像
+            image_path = os.path.join(output_base, 'images', f"{class_name}_{i}.png")
+            image.save(image_path)
+            
+            # 创建对应的标签文件
+            label_path = os.path.join(output_base, 'labels', f"{class_name}_{i}.txt")
+            # 这里需要根据您的具体需求修改标签格式
+            with open(label_path, 'w') as f:
+                f.write(f"0 0.5 0.5 0.8 0.8")  # 示例标签格式
 
-# 将模型移动到 CUDA 设备
-pipeline.to("cuda")
-
-# 生成样本
-num_samples = 10
-samples = pipeline(num_samples).images
-
-# 保存样本
-output_dir = "data/augmented/images"
-os.makedirs(output_dir, exist_ok=True)
-for i, sample in enumerate(samples):
-    sample.save(os.path.join(output_dir, f"diff_sample_{i}.png"))
-
-# 准备数据加载器
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-])
-dataset = datasets.ImageFolder(root='data/augmented/images', transform=transform)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-
-# 加载检测模型
-detection_model = torch.load('path_to_trained_model')  # 请替换为实际模型路径
-
-# 进行检测评估
-results = evaluate_detection(detection_model, dataloader)
-print(results)
+if __name__ == "__main__":
+    generate_diffusion_samples('scripts/data.yaml')
