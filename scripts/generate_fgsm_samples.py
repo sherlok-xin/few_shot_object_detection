@@ -1,84 +1,78 @@
-import os
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import datasets, transforms
-from torchvision.models import resnet18
-from torch.utils.data import DataLoader
+from torchvision import transforms
 from PIL import Image
-from evaluate import evaluate_detection  
+import os
+import yaml
+from tqdm import tqdm
 
 def fgsm_attack(image, epsilon, data_grad):
-    # Collect the element-wise sign of the data gradient
+    """执行FGSM攻击"""
     sign_data_grad = data_grad.sign()
-    # Create the perturbed image by adjusting each pixel of the input image
     perturbed_image = image + epsilon * sign_data_grad
-    # Adding clipping to maintain [0,1] range
     perturbed_image = torch.clamp(perturbed_image, 0, 1)
     return perturbed_image
 
-# Load the pretrained model
-model = resnet18(pretrained=True)
-model.eval()
-
-# Define the data loader
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-])
-
-dataset = datasets.ImageFolder(root='data/train/images', transform=transform)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
-
-# Set the epsilon value for the FGSM attack
-epsilon = 0.1
-
-# Create directory to save adversarial samples
-output_dir = "data/augmented/images"
-os.makedirs(output_dir, exist_ok=True)
-
-# Generate FGSM samples
-samples = []
-for i, (image, label) in enumerate(dataloader):
-    image.requires_grad = True
+def generate_fgsm_samples(config_path, epsilon=0.07):
+    """生成FGSM对抗样本"""
+    # 加载配置
+    with open(config_path, 'r') as f:
+        config = yaml.safe_load(f)
     
-    # Forward pass the data through the model
-    output = model(image)
-    init_pred = output.max(1, keepdim=True)[1]  # get the index of the max log-probability
+    # 设置输出路径
+    output_base = os.path.join(os.path.dirname(config['train']), 'augmented_fgsm')
+    os.makedirs(os.path.join(output_base, 'images'), exist_ok=True)
+    os.makedirs(os.path.join(output_base, 'labels'), exist_ok=True)
+    
+    # 加载YOLOv8模型
+    model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+    model.eval()
+    
+    # 图像预处理
+    transform = transforms.Compose([
+        transforms.Resize((640, 640)),
+        transforms.ToTensor()
+    ])
+    
+    # 处理训练集中的每张图片
+    train_path = config['train']
+    images_path = os.path.join(train_path, 'images')
+    labels_path = os.path.join(train_path, 'labels')
+    
+    for img_name in tqdm(os.listdir(images_path)):
+        if not img_name.endswith(('.jpg', '.png', '.jpeg')):
+            continue
+            
+        # 加载原始图像
+        img_path = os.path.join(images_path, img_name)
+        image = Image.open(img_path).convert('RGB')
+        
+        # 转换为tensor
+        img_tensor = transform(image).unsqueeze(0)
+        img_tensor.requires_grad = True
+        
+        # 获取模型预测
+        output = model(img_tensor)
+        loss = F.cross_entropy(output, torch.tensor([0]))  # 示例loss
+        
+        # 计算梯度
+        loss.backward()
+        
+        # 生成对抗样本
+        perturbed_image = fgsm_attack(img_tensor, epsilon, img_tensor.grad.data)
+        
+        # 保存对抗样本
+        output_img_path = os.path.join(output_base, 'images', f'fgsm_{img_name}')
+        save_image = transforms.ToPILImage()(perturbed_image.squeeze())
+        save_image.save(output_img_path)
+        
+        # 复制对应的标签文件
+        label_name = os.path.splitext(img_name)[0] + '.txt'
+        src_label_path = os.path.join(labels_path, label_name)
+        dst_label_path = os.path.join(output_base, 'labels', f'fgsm_{label_name}')
+        if os.path.exists(src_label_path):
+            shutil.copy2(src_label_path, dst_label_path)
 
-    # If the initial prediction is wrong, don't bother attacking, just move on
-    if init_pred.item() != label.item():
-        continue
-
-    # Calculate the loss
-    loss = F.nll_loss(output, label)
-
-    # Zero all existing gradients
-    model.zero_grad()
-
-    # Calculate gradients of model in backward pass
-    loss.backward()
-
-    # Collect datagrad
-    data_grad = image.grad.data
-
-    # Call FGSM Attack
-    perturbed_image = fgsm_attack(image, epsilon, data_grad)
-
-    # Save the adversarial image
-    img = transforms.ToPILImage()(perturbed_image.squeeze(0))
-    img.save(os.path.join(output_dir, f"adv_sample_{i}.png"))
-    samples.append(img)
-
-    if i >= 9:  # Save only 10 samples
-        break
-
-# 准备数据加载器
-dataset = datasets.ImageFolder(root='data/augmented/images', transform=transform)
-dataloader = DataLoader(dataset, batch_size=1, shuffle=False)
-
-# 加载检测模型
-detection_model = torch.load('path_to_trained_model')  # 请替换为实际模型路径
-
-# 进行检测评估
-results = evaluate_detection(detection_model, dataloader)
-print(results)
+if __name__ == "__main__":
+    generate_fgsm_samples('scripts/data.yaml')
