@@ -42,8 +42,15 @@ small_sample_object_detection/
 │   ├── test/
 │   │   ├── images/
 │   │   └── labels/
-│   └── augmented/
-│       ├── images/
+│   ├── augmented_mixed_1_1/
+│   │   ├── images/
+│   │   └── labels/
+│   ├──augmented_mixed_1_2/
+│   │   ├── images/
+│   │   └── labels/
+│   └── augmented_mixed_1_1/
+│   │   ├── images/
+│   │   └── labels/
 │       
 ├── scripts/
 │   ├── prepare_coco_subset.py
@@ -51,8 +58,7 @@ small_sample_object_detection/
 │   ├── generate_diffusion_samples.py
 │   ├── generate_fgsm_samples.py
 │   ├── compare_results.py
-│   ├── train_and_evaluate_with_mixed_data.py
-│   ├── evaluate.py
+│   ├── generate_mixed_dataset.py
 │   ├── data.yaml
 │   └── data_augmented.yaml
 ├── requirements.txt
@@ -93,31 +99,26 @@ unzip annotations_trainval2017.zip
 python scripts/prepare_coco_subset.py
 ```
 
-### Step 2: Train and Evaluate YOLOv8(对照组)
 
-```bash
-python scripts/train_and_evaluate_yolov8.py
-```
-
-### Step 3: Generate Diffusion Samples
+### Step 2: Generate Diffusion Samples
 
 ```bash
 python scripts/generate_diffusion_samples.py
 ```
 
-### Step 4: Generate Adversarial Samples with FGSM
+### Step 3: Generate Adversarial Samples with FGSM
 
 ```bash
 python scripts/generate_fgsm_samples.py
 ```
 
-### Step 5: Generate Weighted Samples
+### Step 4: Generate Weighted Samples
 
 ```bash
-python scripts/train_and_evaluate_with_mixed_data.py
+python scripts/generate_mixed_dataset.py
 ```
 
-### Step 7: Train and Evaluate with Data
+### Step 5: Train and Evaluate 
 
 ```bash
 python scripts/train_and_evaluate_yolov8.py
